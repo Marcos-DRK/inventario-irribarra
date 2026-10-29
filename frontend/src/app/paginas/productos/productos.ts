@@ -1,9 +1,11 @@
 import { CurrencyPipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { Api, mensajeError } from '../../core/api';
+import { Auth } from '../../core/auth';
 import { Estado, NombrePipe, Notificador } from '../../core/ui';
+import { ProductoForm } from './producto-form';
 
 interface Producto {
   id_producto: number; codigo_sku: string; nombre: string; categoria: string; descripcion: string | null;
@@ -13,8 +15,14 @@ interface Producto {
 
 @Component({
   selector: 'app-productos',
-  imports: [RouterLink, Estado, NombrePipe, CurrencyPipe],
+  imports: [RouterLink, Estado, NombrePipe, CurrencyPipe, ProductoForm],
   template: `
+    @if (auth.esAdmin()) {
+      <div class="row end" style="margin-bottom: 14px">
+        <button class="btn primario" type="button" (click)="creando.set(true)">+ Nuevo producto</button>
+      </div>
+    }
+    <app-producto-form [abierto]="creando()" (cerrar)="creando.set(false)" (guardado)="creado($event)" />
     <div class="grid grid-2">
       @for (p of productos(); track p.id_producto) {
         <a class="card producto" [routerLink]="['/productos', p.id_producto]">
@@ -46,10 +54,19 @@ interface Producto {
 export class Productos {
   private api = inject(Api);
   private avisos = inject(Notificador);
+  private router = inject(Router);
+  protected auth = inject(Auth);
   protected productos = signal<Producto[]>([]);
+  protected creando = signal(false);
 
   constructor() {
     this.api.get<Producto[]>('/productos').then(p => this.productos.set(p))
       .catch(e => this.avisos.error(mensajeError(e)));
+  }
+
+  /** Producto recién creado: se abre su detalle para cargar la receta. */
+  creado(id: number) {
+    this.creando.set(false);
+    this.router.navigate(['/productos', id]);
   }
 }

@@ -168,7 +168,7 @@ def kardex(id_material: int, desde: date | None = None, hasta: date | None = Non
 
 
 # ---------------------------------------------------------------------
-# Productos y recetas (solo lectura en el MVP)
+# Productos y recetas (el Administrador los crea y edita)
 # ---------------------------------------------------------------------
 @router.get("/productos")
 def productos(usuario: dict = Depends(usuario_actual)):
@@ -197,6 +197,92 @@ def producto(id_producto: int, usuario: dict = Depends(usuario_actual)):
     p["unidades_fabricables"] = min((int(l["alcanza_para"]) for l in p["receta"]), default=0)
     p["costo_materiales"] = sum(float(l["costo_linea"]) for l in p["receta"])
     return p
+
+
+Categoria = Literal["Sauna_Ext", "Sauna_Int", "Tina", "Mueble", "Accesorio"]
+
+
+class ProductoIn(BaseModel):
+    codigo_sku: str = Field(..., min_length=1, max_length=30)
+    nombre: str = Field(..., min_length=1, max_length=120)
+    categoria: Categoria
+    descripcion: str | None = Field(None, max_length=300)
+    medidas: str | None = Field(None, max_length=80)
+    precio_venta: float = Field(..., ge=0)
+    tiempo_fabricacion_dias: int = Field(1, ge=1)
+    estado: Literal["Activo", "Inactivo"] = "Activo"
+
+
+@router.post("/productos", status_code=201)
+def crear_producto(datos: ProductoIn, usuario: dict = Depends(solo_admin)):
+    """Crea un producto (sin receta: se agregan los materiales después)."""
+    with conexion(usuario) as con:
+        _, nuevo = ejecutar(con, "INSERT INTO producto (codigo_sku, nombre, categoria, descripcion, medidas, "
+                                 "precio_venta, tiempo_fabricacion_dias, estado) VALUES (%(codigo_sku)s, %(nombre)s, "
+                                 "%(categoria)s, %(descripcion)s, %(medidas)s, %(precio_venta)s, "
+                                 "%(tiempo_fabricacion_dias)s, %(estado)s)", datos.model_dump())
+        return uno(con, "SELECT * FROM producto WHERE id_producto = %s", (nuevo,))
+
+
+@router.put("/productos/{id_producto}")
+def editar_producto(id_producto: int, datos: ProductoIn, usuario: dict = Depends(solo_admin)):
+    """Edita el producto. Para retirarlo del catálogo se cambia el estado a Inactivo (no se borra)."""
+    with conexion(usuario) as con:
+        if not uno(con, "SELECT 1 AS x FROM producto WHERE id_producto = %s", (id_producto,)):
+            raise HTTPException(404, "Producto no encontrado")
+        ejecutar(con, "UPDATE producto SET codigo_sku=%(codigo_sku)s, nombre=%(nombre)s, categoria=%(categoria)s, "
+                      "descripcion=%(descripcion)s, medidas=%(medidas)s, precio_venta=%(precio_venta)s, "
+                      "tiempo_fabricacion_dias=%(tiempo_fabricacion_dias)s, estado=%(estado)s "
+                      "WHERE id_producto=%(id)s", {**datos.model_dump(), "id": id_producto})
+        return uno(con, "SELECT * FROM producto WHERE id_producto = %s", (id_producto,))
+
+
+class RecetaIn(BaseModel):
+    id_material: int
+    cantidad_requerida: float = Field(..., gt=0)
+    observacion: str | None = Field(None, max_length=120)
+
+
+class RecetaCantidadIn(BaseModel):
+    cantidad_requerida: float = Field(..., gt=0)
+    observacion: str | None = Field(None, max_length=120)
+
+
+@router.post("/productos/{id_producto}/receta", status_code=201)
+def agregar_a_receta(id_producto: int, datos: RecetaIn, usuario: dict = Depends(solo_admin)):
+    """Agrega un material a la receta. Aplica a las notas nuevas y a las comandas aún en espera."""
+    with conexion(usuario) as con:
+        if not uno(con, "SELECT 1 AS x FROM producto WHERE id_producto = %s", (id_producto,)):
+            raise HTTPException(404, "Producto no encontrado")
+        if not uno(con, "SELECT 1 AS x FROM material WHERE id_material = %s AND activo = 1", (datos.id_material,)):
+            raise HTTPException(400, "El material no existe o está dado de baja")
+        _, nuevo = ejecutar(con, "INSERT INTO receta_producto (id_producto, id_material, cantidad_requerida, observacion) "
+                                 "VALUES (%s, %s, %s, %s)",
+                            (id_producto, datos.id_material, datos.cantidad_requerida, datos.observacion))
+    return {"id_receta": nuevo}
+
+
+@router.put("/productos/{id_producto}/receta/{id_receta}")
+def editar_linea_receta(id_producto: int, id_receta: int, datos: RecetaCantidadIn,
+                        usuario: dict = Depends(solo_admin)):
+    with conexion(usuario) as con:
+        filas, _ = ejecutar(con, "UPDATE receta_producto SET cantidad_requerida = %s, observacion = %s "
+                                 "WHERE id_receta = %s AND id_producto = %s",
+                            (datos.cantidad_requerida, datos.observacion, id_receta, id_producto))
+        if not filas and not uno(con, "SELECT 1 AS x FROM receta_producto WHERE id_receta = %s AND id_producto = %s",
+                                 (id_receta, id_producto)):
+            raise HTTPException(404, "Línea de receta no encontrada")
+    return {"ok": True}
+
+
+@router.delete("/productos/{id_producto}/receta/{id_receta}")
+def quitar_de_receta(id_producto: int, id_receta: int, usuario: dict = Depends(solo_admin)):
+    with conexion(usuario) as con:
+        filas, _ = ejecutar(con, "DELETE FROM receta_producto WHERE id_receta = %s AND id_producto = %s",
+                            (id_receta, id_producto))
+        if not filas:
+            raise HTTPException(404, "Línea de receta no encontrada")
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------

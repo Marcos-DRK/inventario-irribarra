@@ -1,6 +1,6 @@
 # Base de datos `inventario_irribarra`
 
-MySQL 8.4 LTS · motor InnoDB · `utf8mb4` · 19 tablas · 9 vistas · 10 triggers · 7 procedimientos almacenados.
+MySQL 8.4 LTS · motor InnoDB · `utf8mb4` · 19 tablas · 9 vistas · 15 triggers · 7 procedimientos almacenados.
 Scripts en `db/` (se ejecutan en orden con `db/instalar.ps1`).
 
 | Script | Contenido |
@@ -81,6 +81,8 @@ Tablas sin relaciones: `parametro` (medidas mínimas de retazos) y `bitacora_aud
 | `trg_material_after_insert` | AFTER INSERT `material` | Audita el alta. |
 | `trg_usuario_after_insert` / `_update` | `usuario` | Audita altas y cambios (nunca guarda el hash, solo si la contraseña cambió). |
 | `trg_nota_venta_after_update` | AFTER UPDATE `nota_venta` | Audita los cambios de estado. |
+| `trg_producto_after_insert` / `_update` | `producto` | Audita altas y cambios de producto (SKU, nombre, precio, estado). |
+| `trg_receta_after_insert` / `_update` / `_delete` | `receta_producto` | Audita cada cambio de receta: qué material y qué cantidad, quién y cuándo. |
 
 ### Procedimientos almacenados
 

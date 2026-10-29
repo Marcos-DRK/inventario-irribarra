@@ -7,10 +7,7 @@
 .marca { display: flex; gap: 10px; align-items: center; padding: 18px 16px 14px; }
 .marca strong { display: block; font-family: var(--serif); font-size: 15px; color: #fff; }
 .marca small, .perfil small { display: block; font-size: 11px; color: #c9b9a6; }
-.logo {
-  width: 32px; height: 32px; border-radius: 7px; background: var(--verde); color: #fff;
-  display: grid; place-items: center; font-family: var(--serif); font-weight: 700; font-size: 13px;
-}
+.logo { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex: none; }
 
 nav { padding: 6px 10px; flex: 1; }
 .grupo {

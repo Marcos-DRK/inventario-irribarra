@@ -26,7 +26,7 @@ Navegador ─► http://localhost:8000 ─► API Python FastAPI ─► MySQL 8.
 
 | Exigencia | Dónde se cumple |
 |---|---|
-| 1. Crear o fortalecer una BD | MySQL 8.4 / InnoDB: 19 tablas (15 del informe + kardex, 2 bitácoras, parámetros), 9 vistas, 10 triggers, 7 procedimientos con transacciones, roles del motor. Ver [BASE_DE_DATOS.md](docs/BASE_DE_DATOS.md). |
+| 1. Crear o fortalecer una BD | MySQL 8.4 / InnoDB: 19 tablas (15 del informe + kardex, 2 bitácoras, parámetros), 9 vistas, 15 triggers, 7 procedimientos con transacciones, roles del motor. Ver [BASE_DE_DATOS.md](docs/BASE_DE_DATOS.md). |
 | 2. Ingresar como administrador y otros usuarios con sus atributos | Login con contraseña bcrypt. Roles **Administrador** (`admin`) y **Trabajador** (`ricardo.trab`, `victor.trab`). Cada usuario tiene RUT, nombres, correo, rol, estado, fecha de creación y último acceso. CRUD en *Usuarios*. |
 | 3. Pantallas interactivas para los distintos usuarios | El menú y las rutas cambian según el rol. El trabajador opera el taller (Kanban, mermas, compras, conteos); el administrador además simula y aprueba ventas, da de alta materiales, ve reportes, usuarios y bitácora. La base también lo impide: cada rol se conecta con su propio usuario de MySQL. |
 | 4. Al menos dos reportes en Excel o PDF | **Reporte mensual PDF** (consumo por categoría, materiales más consumidos, alertas, ahorro por retazos). **Inventario Excel** (3 hojas: stock con estados, alertas pendientes, resumen por bodega). **Kardex Excel** por material. |

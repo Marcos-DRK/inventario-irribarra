@@ -11,7 +11,7 @@ import { Auth } from '../../core/auth';
   template: `
     <div class="fondo">
       <form class="card caja" (ngSubmit)="entrar()">
-        <span class="logo">TI</span>
+        <img class="logo" src="logo.png" alt="Tomas Irribarra · Saunas & Wellness">
         <h1>Taller Irribarra</h1>
         <p class="muted small">Sistema de Gestión de Inventario y Producción</p>
 
@@ -37,8 +37,7 @@ import { Auth } from '../../core/auth';
     .fondo { min-height: 100vh; display: grid; place-items: center; padding: 16px;
              background: linear-gradient(135deg, #e9e6dc, #f5f1e8 60%, #efe7da); }
     .caja { width: 100%; max-width: 340px; padding: 28px 26px; display: flex; flex-direction: column; gap: 12px; }
-    .logo { width: 40px; height: 40px; border-radius: 8px; background: var(--verde); color: #fff; margin: 0 auto;
-            display: grid; place-items: center; font-family: var(--serif); font-weight: 700; }
+    .logo { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; margin: 0 auto; }
     h1 { text-align: center; font-size: 19px; }
     p { text-align: center; margin: -6px 0 6px; }
     .pie { margin: 4px 0 0; }`,

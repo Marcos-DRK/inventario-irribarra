@@ -317,4 +317,71 @@ BEGIN
   END IF;
 END $$
 
+-- ---------------------------------------------------------------------
+-- 8. Auditoría de productos y recetas (la receta decide qué se descuenta)
+-- ---------------------------------------------------------------------
+DROP TRIGGER IF EXISTS trg_producto_after_insert $$
+CREATE TRIGGER trg_producto_after_insert
+AFTER INSERT ON producto
+FOR EACH ROW
+BEGIN
+  INSERT INTO bitacora_auditoria (tabla, accion, id_registro, valor_nuevo, usuario)
+  VALUES ('producto', 'INSERT', NEW.id_producto,
+          JSON_OBJECT('codigo_sku', NEW.codigo_sku, 'nombre', NEW.nombre,
+                      'precio_venta', NEW.precio_venta, 'estado', NEW.estado),
+          COALESCE(@app_usuario, CURRENT_USER()));
+END $$
+
+DROP TRIGGER IF EXISTS trg_producto_after_update $$
+CREATE TRIGGER trg_producto_after_update
+AFTER UPDATE ON producto
+FOR EACH ROW
+BEGIN
+  INSERT INTO bitacora_auditoria (tabla, accion, id_registro, valor_anterior, valor_nuevo, usuario)
+  VALUES ('producto', 'UPDATE', NEW.id_producto,
+          JSON_OBJECT('codigo_sku', OLD.codigo_sku, 'nombre', OLD.nombre,
+                      'precio_venta', OLD.precio_venta, 'estado', OLD.estado),
+          JSON_OBJECT('codigo_sku', NEW.codigo_sku, 'nombre', NEW.nombre,
+                      'precio_venta', NEW.precio_venta, 'estado', NEW.estado),
+          COALESCE(@app_usuario, CURRENT_USER()));
+END $$
+
+DROP TRIGGER IF EXISTS trg_receta_after_insert $$
+CREATE TRIGGER trg_receta_after_insert
+AFTER INSERT ON receta_producto
+FOR EACH ROW
+BEGIN
+  INSERT INTO bitacora_auditoria (tabla, accion, id_registro, valor_nuevo, usuario)
+  VALUES ('receta_producto', 'INSERT', NEW.id_receta,
+          JSON_OBJECT('id_producto', NEW.id_producto, 'id_material', NEW.id_material,
+                      'cantidad_requerida', NEW.cantidad_requerida),
+          COALESCE(@app_usuario, CURRENT_USER()));
+END $$
+
+DROP TRIGGER IF EXISTS trg_receta_after_update $$
+CREATE TRIGGER trg_receta_after_update
+AFTER UPDATE ON receta_producto
+FOR EACH ROW
+BEGIN
+  INSERT INTO bitacora_auditoria (tabla, accion, id_registro, valor_anterior, valor_nuevo, usuario)
+  VALUES ('receta_producto', 'UPDATE', NEW.id_receta,
+          JSON_OBJECT('id_producto', OLD.id_producto, 'id_material', OLD.id_material,
+                      'cantidad_requerida', OLD.cantidad_requerida),
+          JSON_OBJECT('id_producto', NEW.id_producto, 'id_material', NEW.id_material,
+                      'cantidad_requerida', NEW.cantidad_requerida),
+          COALESCE(@app_usuario, CURRENT_USER()));
+END $$
+
+DROP TRIGGER IF EXISTS trg_receta_after_delete $$
+CREATE TRIGGER trg_receta_after_delete
+AFTER DELETE ON receta_producto
+FOR EACH ROW
+BEGIN
+  INSERT INTO bitacora_auditoria (tabla, accion, id_registro, valor_anterior, usuario)
+  VALUES ('receta_producto', 'DELETE', OLD.id_receta,
+          JSON_OBJECT('id_producto', OLD.id_producto, 'id_material', OLD.id_material,
+                      'cantidad_requerida', OLD.cantidad_requerida),
+          COALESCE(@app_usuario, CURRENT_USER()));
+END $$
+
 DELIMITER ;
