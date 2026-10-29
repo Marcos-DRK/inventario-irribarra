@@ -1,0 +1,21 @@
+.tablero { display: grid; grid-template-columns: repeat(5, minmax(190px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 6px; }
+.columna { background: var(--crema-2); border-radius: 9px; padding: 10px; min-height: 260px; display: flex; flex-direction: column; }
+.columna header {
+  display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--texto-2); padding: 2px 4px 10px;
+}
+.lista { flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 60px; }
+.tarjeta {
+  background: #fff; border: 1px solid var(--borde); border-radius: 8px; padding: 10px 11px; cursor: grab;
+  font-size: 12.5px; display: flex; flex-direction: column; gap: 4px; box-shadow: var(--sombra);
+}
+.tarjeta:active { cursor: grabbing; }
+.tarjeta strong { font-family: var(--serif); font-size: 13px; }
+.tarjeta .pie { display: flex; justify-content: space-between; color: var(--texto-2); font-size: 11.5px; }
+.flechas { display: flex; justify-content: flex-end; gap: 4px; }
+.vacia { color: var(--texto-2); font-size: 12px; text-align: center; padding: 18px 0; }
+.retazo { padding: 7px 0; border-bottom: 1px solid var(--crema-2); flex-wrap: nowrap; font-size: 13px; }
+
+.cdk-drag-preview { box-shadow: 0 8px 22px rgba(0,0,0,.18); border-radius: 8px; }
+.cdk-drag-placeholder { opacity: .35; }
+.cdk-drag-animating, .lista.cdk-drop-list-dragging .tarjeta:not(.cdk-drag-placeholder) { transition: transform .2s ease; }

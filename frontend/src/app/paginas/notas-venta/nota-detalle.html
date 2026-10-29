@@ -1,0 +1,72 @@
+<div class="row" style="margin-bottom: 14px">
+  <a class="btn chico" routerLink="/notas-venta">← Volver</a>
+</div>
+
+@if (d(); as d) {
+  <div class="card">
+    <div class="card-header">
+      <h2>Nota de Venta N° {{ d.nota['folio'] }}</h2>
+      <app-estado [valor]="d.nota['estado']" [texto]="d.nota['estado'] === 'RechazadaStock' ? 'Rechazada por stock' : ''" />
+    </div>
+    <div class="card-body grid grid-2" style="gap: 28px">
+      <div>
+        <dl class="datos">
+          <dt>Cliente</dt><dd><strong>{{ d.nota['cliente'] }}</strong></dd>
+          <dt>RUT</dt><dd>{{ d.nota['cliente_rut'] }}</dd>
+          <dt>Comuna</dt><dd>{{ d.nota['comuna'] || '—' }}</dd>
+          <dt>Fecha de venta</dt><dd>{{ d.nota['fecha_venta'] | date:'dd-MM-yyyy' }}</dd>
+          <dt>Fecha de despacho</dt><dd>{{ d.nota['fecha_despacho'] ? (d.nota['fecha_despacho'] | date:'dd-MM-yyyy') : '—' }}</dd>
+          @for (l of d.detalles; track l.id_detalle) {
+            <dt>Producto</dt><dd>{{ l.producto }} × {{ l.cantidad }}</dd>
+            @if (l.diseno_personalizado) { <dt>Diseño personalizado</dt><dd class="muted">{{ l.diseno_personalizado }}</dd> }
+            @if (l.id_comanda) {
+              <dt>Comanda</dt>
+              <dd><a routerLink="/comandas">Comanda {{ l.id_comanda }}</a> · {{ l.estado_comanda }}</dd>
+            }
+          }
+          <dt><strong>Total</strong></dt><dd><strong>{{ d.nota['monto_total'] | currency:'CLP':'symbol-narrow':'1.0-0' }}</strong></dd>
+        </dl>
+      </div>
+
+      <div>
+        <h3 style="font-size: 14px; margin-bottom: 10px">Verificación automática de stock</h3>
+        @if (d.insumos_faltantes) {
+          <div class="aviso bad">⚠ {{ d.insumos_faltantes }} insumo{{ d.insumos_faltantes > 1 ? 's no cubren' : ' no cubre' }} esta orden</div>
+        } @else if (d.nota['estado'] === 'Aprobada') {
+          <div class="aviso ok">✓ Stock reservado: la orden está aprobada</div>
+        } @else {
+          <div class="aviso ok">✓ Todos los insumos están disponibles</div>
+        }
+        <div class="tabla-wrap" style="max-height: 420px; overflow-y: auto">
+          <table class="tabla">
+            <thead><tr><th>Material</th><th class="num">Requerido</th><th class="num">Disponible</th><th></th></tr></thead>
+            <tbody>
+              @for (v of d.verificacion; track v.id_material) {
+                <tr>
+                  <td>{{ v.material }}</td>
+                  <td class="num">{{ v.requerido | number:'1.0-2' }} {{ v.unidad_medida }}</td>
+                  <td class="num">{{ v.disponible | number:'1.0-2' }} {{ v.unidad_medida }}</td>
+                  <td><app-estado [valor]="v.estado" /></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (faltantes().length || (auth.esAdmin() && d.nota['estado'] === 'RechazadaStock')) {
+          <div class="row mt">
+            @if (faltantes().length) {
+              <button class="btn primario" type="button" (click)="comprarFaltantes()">Generar orden de compra</button>
+            }
+            @if (auth.esAdmin() && d.nota['estado'] === 'RechazadaStock') {
+              <button class="btn" type="button" (click)="procesar()" [disabled]="procesando()">
+                {{ procesando() ? 'Verificando…' : 'Volver a verificar y aprobar' }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+} @else {
+  <p class="muted">Cargando…</p>
+}

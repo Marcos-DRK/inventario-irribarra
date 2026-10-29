@@ -1,0 +1,122 @@
+<div class="card">
+  <div class="card-header">
+    <h2>Materiales e insumos</h2>
+    <div class="row">
+      <input class="input" style="width: 190px" placeholder="Buscar código o nombre" [(ngModel)]="filtros.buscar"
+             (keyup.enter)="cargar()" (blur)="cargar()" />
+      <select class="input" style="width: auto" [(ngModel)]="filtros.id_bodega" (ngModelChange)="cargar()">
+        <option value="">Todas las bodegas</option>
+        @for (b of bodegas(); track b.id_bodega) { <option [value]="b.id_bodega">{{ b.nombre }}</option> }
+      </select>
+      <select class="input" style="width: auto" [(ngModel)]="filtros.tipo" (ngModelChange)="cargar()">
+        <option value="">Todos los tipos</option>
+        @for (t of tipos; track t) { <option [value]="t">{{ t | nombre }}</option> }
+      </select>
+      <select class="input" style="width: auto" [(ngModel)]="filtros.estado" (ngModelChange)="cargar()">
+        <option value="">Todos los estados</option>
+        <option value="Sin stock">Sin stock</option><option value="Critico">Crítico</option>
+        <option value="Bajo">Bajo</option><option value="OK">OK</option>
+      </select>
+      <button class="btn" type="button" (click)="exportar()">⇩ Excel</button>
+      @if (auth.esAdmin()) {
+        <button class="btn primario" type="button" (click)="nuevo()">+ Nuevo material</button>
+      }
+    </div>
+  </div>
+  <div class="tabla-wrap">
+    <table class="tabla">
+      <thead>
+        <tr><th>Código</th><th>Material</th><th>Tipo</th><th>Bodega</th><th class="num">Stock</th>
+            <th class="num">Disponible</th><th class="num">Mínimo</th><th>Nivel</th><th>Estado</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (m of materiales(); track m.id_material) {
+          <tr>
+            <td class="mono">{{ m.codigo_interno }}</td>
+            <td>{{ m.nombre }}</td>
+            <td>{{ m.tipo | nombre }}</td>
+            <td>{{ m.bodega }}</td>
+            <td class="num">{{ m.stock_actual | number:'1.0-2' }} {{ m.unidad_medida }}</td>
+            <td class="num" [title]="'Comprometido por comandas en espera: ' + m.comprometido">
+              {{ m.disponible | number:'1.0-2' }}
+            </td>
+            <td class="num">{{ m.stock_minimo | number:'1.0-2' }} {{ m.unidad_medida }}</td>
+            <td><div class="nivel {{ claseNivel(m) }}"><span [style.width.%]="m.nivel_pct"></span></div></td>
+            <td><app-estado [valor]="m.estado_stock" /></td>
+            <td class="right nowrap">
+              <button class="btn chico" type="button" (click)="router.navigate(['/materiales', m.id_material])">Kardex</button>
+              <button class="btn chico" type="button" (click)="abrirAjuste(m)">Ajustar</button>
+              @if (auth.esAdmin()) {
+                <button class="btn chico" type="button" (click)="editar(m)">Editar</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="10" class="vacio">No hay materiales con estos filtros</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<app-modal [abierto]="editando() !== null" [titulo]="editando() === 'nuevo' ? 'Dar de alta material' : 'Editar material'"
+           [ancho]="620" (cerrar)="editando.set(null)">
+  <form #f="ngForm" (ngSubmit)="guardar()">
+    <div class="form-grid">
+      <div class="campo"><label>Código interno</label><input class="input" name="cod" [(ngModel)]="form.codigo_interno" placeholder="FER-XXXX-01" required /></div>
+      <div class="campo"><label>Nombre</label><input class="input" name="nom" [(ngModel)]="form.nombre" required /></div>
+      <div class="campo"><label>Tipo</label>
+        <select class="input" name="tipo" [(ngModel)]="form.tipo">@for (t of tipos; track t) { <option [value]="t">{{ t | nombre }}</option> }</select>
+      </div>
+      <div class="campo"><label>Unidad de medida</label>
+        <select class="input" name="uni" [(ngModel)]="form.unidad_medida">@for (u of unidades; track u) { <option [value]="u">{{ u }}</option> }</select>
+      </div>
+      <div class="campo"><label>Stock mínimo</label><input class="input" type="number" min="0" step="any" name="min" [(ngModel)]="form.stock_minimo" /></div>
+      <div class="campo"><label>Costo unitario ($)</label><input class="input" type="number" min="0" name="costo" [(ngModel)]="form.costo_unitario" /></div>
+      <div class="campo"><label>Bodega</label>
+        <select class="input" name="bod" [(ngModel)]="form.id_bodega">@for (b of bodegas(); track b.id_bodega) { <option [ngValue]="b.id_bodega">{{ b.nombre }}</option> }</select>
+      </div>
+      <div class="campo"><label>Proveedor principal</label>
+        <select class="input" name="prov" [(ngModel)]="form.id_proveedor_principal">
+          <option [ngValue]="null">—</option>
+          @for (p of proveedores(); track p.id_proveedor) { <option [ngValue]="p.id_proveedor">{{ p.razon_social }}</option> }
+        </select>
+      </div>
+      @if (editando() === 'nuevo') {
+        <div class="campo"><label>Stock inicial (conteo)</label><input class="input" type="number" min="0" step="any" name="ini" [(ngModel)]="form.stock_inicial" />
+          <span class="ayuda">Queda registrado en el kardex como carga inicial</span></div>
+      } @else {
+        <div class="campo ancho"><span class="ayuda">El stock no se edita aquí: use "Ajustar", una factura de compra o la fabricación.</span></div>
+      }
+    </div>
+    <div class="row end mt">
+      @if (editando() !== 'nuevo') { <button class="btn peligro" type="button" (click)="darDeBaja()">Dar de baja</button> }
+      <span class="spacer"></span>
+      <button class="btn" type="button" (click)="editando.set(null)">Cancelar</button>
+      <button class="btn primario" type="submit" [disabled]="f.invalid">Guardar</button>
+    </div>
+  </form>
+</app-modal>
+
+<app-modal [abierto]="!!ajustando()" titulo="Ajustar stock (conteo físico)" (cerrar)="ajustando.set(null)">
+  @if (ajustando(); as m) {
+    <form #fa="ngForm" (ngSubmit)="guardarAjuste()">
+      <p style="margin-top: 0"><strong>{{ m.nombre }}</strong><br />
+        <span class="muted small">Stock actual: {{ m.stock_actual | number:'1.0-2' }} {{ m.unidad_medida }}</span></p>
+      <div class="form-grid">
+        <div class="campo"><label>Stock contado ({{ m.unidad_medida }})</label>
+          <input class="input" type="number" min="0" step="any" name="ns" [(ngModel)]="ajuste.nuevo_stock" required /></div>
+        <div class="campo"><label>Tipo</label>
+          <select class="input" name="t" [(ngModel)]="ajuste.tipo">
+            <option value="AJUSTE">Ajuste de inventario</option><option value="CARGA_INICIAL">Carga inicial</option>
+          </select></div>
+        <div class="campo ancho"><label>Motivo</label><input class="input" name="mot" maxlength="60" [(ngModel)]="ajuste.motivo" required /></div>
+      </div>
+      <p class="small muted">Diferencia: {{ ajuste.nuevo_stock - m.stock_actual | number:'1.0-2' }} {{ m.unidad_medida }}</p>
+      <div class="row end">
+        <button class="btn" type="button" (click)="ajustando.set(null)">Cancelar</button>
+        <button class="btn primario" type="submit" [disabled]="fa.invalid">Guardar ajuste</button>
+      </div>
+    </form>
+  }
+</app-modal>

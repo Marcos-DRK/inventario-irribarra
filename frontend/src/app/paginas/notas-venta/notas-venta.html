@@ -1,0 +1,81 @@
+<div class="card">
+  <div class="card-header">
+    <div class="tabs">
+      @for (f of filtros; track f.valor) {
+        <button type="button" [class.activo]="filtro() === f.valor" (click)="filtro.set(f.valor)">{{ f.texto }}</button>
+      }
+    </div>
+    @if (auth.esAdmin()) {
+      <button class="btn primario" type="button" (click)="abrirSimulador()">+ Simular nota de venta</button>
+    }
+  </div>
+  <div class="tabla-wrap">
+    <table class="tabla">
+      <thead>
+        <tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Producto</th><th>Despacho</th><th>Estado</th><th class="num">Total</th></tr>
+      </thead>
+      <tbody>
+        @for (n of visibles(); track n.id_nota_venta) {
+          <tr class="clic" (click)="router.navigate(['/notas-venta', n.id_nota_venta])">
+            <td class="nowrap"><strong>N° {{ n.folio }}</strong></td>
+            <td class="nowrap">{{ n.fecha_venta | date:'dd-MM-yyyy' }}</td>
+            <td>{{ n.cliente }}<div class="muted small">{{ n.cliente_rut }}</div></td>
+            <td>{{ n.productos }}</td>
+            <td class="nowrap">{{ n.fecha_despacho ? (n.fecha_despacho | date:'dd-MM-yyyy') : '—' }}</td>
+            <td>
+              <app-estado [valor]="n.estado" />
+              @if (n.alertas_pendientes) { <div class="small muted">{{ n.alertas_pendientes }} insumos faltantes</div> }
+            </td>
+            <td class="num">{{ n.monto_total | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" class="vacio">No hay notas de venta con este filtro</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<app-modal [abierto]="simulando()" titulo="Simular nota desde la plataforma de ventas" [ancho]="680" (cerrar)="simulando.set(false)">
+  <form (ngSubmit)="enviar()" #f="ngForm">
+    <p class="muted small" style="margin-top: 0">
+      Envía a la API el mismo JSON que generaría la plataforma web. El sistema registra la nota,
+      calcula el consumo según la receta y la aprueba o rechaza automáticamente.
+    </p>
+    <div class="form-grid">
+      <div class="campo"><label>Folio</label><input class="input" name="folio" [(ngModel)]="form.folio" required /></div>
+      <div class="campo"><label>Fecha de despacho</label><input class="input" type="date" name="fd" [(ngModel)]="form.fecha_despacho" /></div>
+      <div class="campo"><label>RUT cliente</label><input class="input" name="rut" [(ngModel)]="form.rut" placeholder="12345678-9" required /></div>
+      <div class="campo"><label>Comuna</label><input class="input" name="comuna" [(ngModel)]="form.comuna" /></div>
+      <div class="campo"><label>Nombres</label><input class="input" name="nombres" [(ngModel)]="form.nombres" required /></div>
+      <div class="campo"><label>Apellidos</label><input class="input" name="apellidos" [(ngModel)]="form.apellidos" required /></div>
+      <div class="campo"><label>Teléfono</label><input class="input" name="tel" [(ngModel)]="form.telefono" /></div>
+      <div class="campo"><label>Correo</label><input class="input" type="email" name="correo" [(ngModel)]="form.correo" /></div>
+      <div class="campo ancho">
+        <label>Producto</label>
+        <select class="input" name="sku" [(ngModel)]="form.codigo_sku" (ngModelChange)="elegirProducto()" required>
+          <option value="" disabled>Seleccione…</option>
+          @for (p of productos(); track p.id_producto) {
+            <option [value]="p.codigo_sku">{{ p.nombre }} ({{ p.codigo_sku }})</option>
+          }
+        </select>
+      </div>
+      <div class="campo"><label>Cantidad</label><input class="input" type="number" min="1" name="cant" [(ngModel)]="form.cantidad" required /></div>
+      <div class="campo"><label>Precio unitario</label><input class="input" type="number" min="0" name="precio" [(ngModel)]="form.precio_unitario" /></div>
+      <div class="campo ancho"><label>Diseño personalizado</label>
+        <textarea class="input" name="diseno" [(ngModel)]="form.diseno_personalizado" placeholder="Ventanas, bancas, medidas especiales…"></textarea>
+      </div>
+    </div>
+
+    @if (verJson()) { <pre class="json mt">{{ json() | json }}</pre> }
+
+    <div class="row end mt">
+      <button class="btn" type="button" (click)="verJson.set(!verJson())">{{ verJson() ? 'Ocultar JSON' : 'Ver JSON' }}</button>
+      <span class="spacer"></span>
+      <button class="btn" type="button" (click)="simulando.set(false)">Cancelar</button>
+      <button class="btn primario" type="submit" [disabled]="f.invalid || enviando()">
+        {{ enviando() ? 'Enviando…' : 'Enviar nota de venta' }}
+      </button>
+    </div>
+  </form>
+</app-modal>

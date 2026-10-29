@@ -1,0 +1,76 @@
+<div class="card">
+  <div class="card-header">
+    <div class="row">
+      <h2>Reporte mensual —</h2>
+      <select class="input" style="width: auto" [(ngModel)]="periodo" (ngModelChange)="cargar()">
+        @for (p of periodos(); track p) { <option [value]="p">{{ nombre(p) }}</option> }
+      </select>
+    </div>
+    <div class="row">
+      <button class="btn" type="button" (click)="descargar('excel')" [disabled]="!!descargando()">
+        {{ descargando() === 'excel' ? 'Generando…' : '⇩ Inventario Excel' }}</button>
+      <button class="btn primario" type="button" (click)="descargar('pdf')" [disabled]="!!descargando()">
+        {{ descargando() === 'pdf' ? 'Generando…' : '⇩ Exportar PDF' }}</button>
+    </div>
+  </div>
+
+  @if (r(); as r) {
+    <div class="card-body stack">
+      <div class="grid grid-4">
+        <div class="card kpi"><div class="etiqueta">Consumo total de materiales</div>
+          <div class="valor">{{ r.resumen.consumo_total_materiales | currency:'CLP':'symbol-narrow':'1.0-0' }}</div></div>
+        <div class="card kpi"><div class="etiqueta">Alertas generadas</div>
+          <div class="valor">{{ r.resumen.total_alertas }}</div></div>
+        <div class="card kpi"><div class="etiqueta">Ahorro por reciclaje de mermas</div>
+          <div class="valor verde">{{ r.resumen.ahorro_por_reciclaje | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
+          <div class="pie">{{ r.mermas.length }} retazos reutilizados</div></div>
+        <div class="card kpi"><div class="etiqueta">Comandas finalizadas</div>
+          <div class="valor">{{ r.resumen.comandas_finalizadas }}</div></div>
+      </div>
+
+      <div>
+        <h3 style="font-size: 14px; margin-bottom: 10px">Consumo de materiales por categoría</h3>
+        @for (c of r.por_categoria; track c.categoria) {
+          <div class="row" style="flex-wrap: nowrap; margin-bottom: 8px">
+            <span style="width: 110px">{{ c.categoria | nombre }}</span>
+            <div class="barra"><span [style.width.%]="c.consumo / maxCategoria() * 100"></span></div>
+            <strong class="nowrap" style="width: 110px; text-align: right">{{ c.consumo | currency:'CLP':'symbol-narrow':'1.0-0' }}</strong>
+          </div>
+        } @empty {
+          <p class="muted">Sin consumo por fabricación en este período.</p>
+        }
+      </div>
+
+      <div class="grid grid-2">
+        <div>
+          <h3 style="font-size: 14px; margin-bottom: 6px">Materiales más consumidos</h3>
+          <table class="tabla">
+            <thead><tr><th>Material</th><th class="num">Cantidad</th><th class="num">Costo</th></tr></thead>
+            <tbody>
+              @for (m of r.top_materiales; track m.codigo_interno) {
+                <tr><td>{{ m.material }}</td><td class="num">{{ m.cantidad | number:'1.0-2' }} {{ m.unidad_medida }}</td>
+                    <td class="num">{{ m.costo | currency:'CLP':'symbol-narrow':'1.0-0' }}</td></tr>
+              } @empty { <tr><td colspan="3" class="vacio">Sin datos</td></tr> }
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3 style="font-size: 14px; margin-bottom: 6px">Alertas del período</h3>
+          <table class="tabla">
+            <thead><tr><th>Material</th><th>Tipo</th><th>Nota</th><th>Estado</th></tr></thead>
+            <tbody>
+              @for (a of r.alertas; track a.id_alerta) {
+                <tr><td>{{ a.material }}</td><td><app-estado [valor]="a.tipo" /></td><td>{{ a.folio || '—' }}</td>
+                    <td><app-estado [valor]="a.estado" /></td></tr>
+              } @empty { <tr><td colspan="4" class="vacio">Sin alertas</td></tr> }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="small muted" style="margin: 0">Reporte guardado en la tabla reporte_mensual el
+        {{ r.resumen.fecha_generacion | date:'dd-MM-yyyy HH:mm' }}.</p>
+    </div>
+  } @else {
+    <div class="card-body muted">Cargando…</div>
+  }
+</div>

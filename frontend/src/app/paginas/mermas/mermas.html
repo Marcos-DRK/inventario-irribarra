@@ -1,0 +1,88 @@
+<div class="card">
+  <div class="card-header">
+    <h2>Mermas y sobrantes de madera</h2>
+    <div class="row">
+      <div class="tabs">
+        @for (f of filtros; track f) {
+          <button type="button" [class.activo]="filtro() === f" (click)="filtro.set(f)">{{ f || 'Todos' }}</button>
+        }
+      </div>
+      <button class="btn primario" type="button" (click)="abrir()">+ Registrar retazo</button>
+    </div>
+  </div>
+  <div class="tabla-wrap">
+    <table class="tabla">
+      <thead>
+        <tr><th>ID</th><th>Material origen</th><th>Dimensiones (L×A×E cm)</th><th>¿Supera mínimo?</th>
+            <th>Bodega</th><th>Registro</th><th>Estado</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (m of visibles(); track m.id_merma) {
+          <tr>
+            <td class="mono">#{{ m.id_merma.toString().padStart(4, '0') }}</td>
+            <td>{{ m.material }}</td>
+            <td class="nowrap">{{ m.largo_cm | number:'1.0-1' }} × {{ m.ancho_cm | number:'1.0-1' }} × {{ m.espesor_cm | number:'1.0-1' }}</td>
+            <td>
+              @if (m.supera_minimo) { <span class="badge ok">Sí — reutilizable</span> }
+              @else { <span class="badge warn">No — descarte</span> }
+            </td>
+            <td>{{ m.bodega }}</td>
+            <td class="small muted nowrap">{{ m.fecha_registro | date:'dd-MM-yyyy' }} · {{ m.registrado_por }}</td>
+            <td>
+              <app-estado [valor]="m.estado" />
+              @if (m.id_comanda_uso) { <div class="small muted">Comanda {{ m.id_comanda_uso }}</div> }
+            </td>
+            <td class="right nowrap">
+              @if (m.estado === 'Reservado') {
+                <button class="btn chico" type="button" (click)="accion(m, 'liberar')">Liberar</button>
+              }
+              @if (m.estado === 'Disponible') {
+                <button class="btn chico peligro" type="button" (click)="accion(m, 'descartar')">Descartar</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="8" class="vacio">No hay retazos con este filtro</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="card-body small muted" style="border-top: 1px solid var(--borde)">
+    Priorización activa: al preparar una comanda, el sistema sugiere primero los retazos compatibles antes de descontar
+    madera nueva. Ahorro acumulado por retazos utilizados:
+    <strong style="color: var(--ok)">{{ ahorro() | currency:'CLP':'symbol-narrow':'1.0-0' }}</strong>
+  </div>
+</div>
+
+<app-modal [abierto]="registrando()" titulo="Registrar retazo de madera" (cerrar)="registrando.set(false)">
+  <form #f="ngForm" (ngSubmit)="guardar()">
+    <div class="form-grid">
+      <div class="campo ancho">
+        <label>Material de origen</label>
+        <select class="input" name="mat" [(ngModel)]="form.id_material" required>
+          <option [ngValue]="null" disabled>Seleccione una madera…</option>
+          @for (m of maderas(); track m.id_material) { <option [ngValue]="m.id_material">{{ m.nombre }}</option> }
+        </select>
+      </div>
+      <div class="campo"><label>Largo (cm)</label><input class="input" type="number" min="0.1" step="0.1" name="l" [(ngModel)]="form.largo_cm" required /></div>
+      <div class="campo"><label>Ancho (cm)</label><input class="input" type="number" min="0.1" step="0.1" name="a" [(ngModel)]="form.ancho_cm" required /></div>
+      <div class="campo"><label>Espesor (cm)</label><input class="input" type="number" min="0.1" step="0.1" name="e" [(ngModel)]="form.espesor_cm" required /></div>
+      <div class="campo">
+        <label>Bodega</label>
+        <select class="input" name="b" [(ngModel)]="form.id_bodega">
+          @for (b of bodegas(); track b.id_bodega) { <option [ngValue]="b.id_bodega">{{ b.nombre }}</option> }
+        </select>
+      </div>
+    </div>
+    <p class="small muted">
+      Medida mínima reutilizable: {{ minimos()['merma_largo_minimo_cm'] }} cm de largo y
+      {{ minimos()['merma_ancho_minimo_cm'] }} cm de ancho.
+    </p>
+    @if (reutilizable() === true) { <div class="aviso ok">Supera la medida mínima: quedará disponible para reutilizar</div> }
+    @if (reutilizable() === false) { <div class="aviso warn">Bajo la medida mínima: se registrará como descarte</div> }
+    <div class="row end mt">
+      <button class="btn" type="button" (click)="registrando.set(false)">Cancelar</button>
+      <button class="btn primario" type="submit" [disabled]="f.invalid">Registrar</button>
+    </div>
+  </form>
+</app-modal>

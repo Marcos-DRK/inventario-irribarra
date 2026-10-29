@@ -1,0 +1,16 @@
+# Claves de conexión generadas por db/instalar.ps1
+backend/.env
+db/_instalar_tmp.sql
+db/_root_tmp.cnf
+db/_*_tmp.cnf
+db/respaldos/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Angular / Node
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/

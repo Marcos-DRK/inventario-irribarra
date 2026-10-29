@@ -1,0 +1,96 @@
+<div class="card">
+  <div class="card-header">
+    <h2>Tablero de producción</h2>
+    <div class="row">
+      <span class="badge">Actualizado {{ actualizado() | date:'HH:mm' }}</span>
+      <button class="btn chico" type="button" (click)="cargar()">↻ Actualizar</button>
+    </div>
+  </div>
+  <div class="card-body">
+    <p class="muted small" style="margin-top: 0">
+      Arrastre una tarjeta a la etapa siguiente (o use ◀ ▶). Al pasar de <strong>En espera</strong> a
+      <strong>Fabricación</strong> el sistema descuenta los materiales de la receta.
+    </p>
+    <div class="tablero" cdkDropListGroup>
+      @for (etapa of etapas; track etapa) {
+        <section class="columna">
+          <header>
+            <span>{{ etapa | nombre }}</span>
+            <span>{{ porEtapa()[etapa].length }}</span>
+          </header>
+          <div class="lista" cdkDropList [cdkDropListData]="etapa" (cdkDropListDropped)="soltar($event)">
+            @for (c of porEtapa()[etapa]; track c.id_comanda) {
+              <article class="tarjeta" cdkDrag [cdkDragData]="c" (click)="abrir(c)">
+                <strong>Comanda {{ c.id_comanda }}</strong>
+                <div>N. Venta {{ c.folio }} · {{ c.producto }}{{ c.cantidad > 1 ? ' ×' + c.cantidad : '' }}</div>
+                <div class="pie">
+                  <span>{{ c.trabajador || 'Sin asignar' }}</span>
+                  <span>{{ c.fecha_despacho ? (c.fecha_despacho | date:'dd/MM') : '' }}</span>
+                </div>
+                <div class="flechas" (click)="$event.stopPropagation()">
+                  @if (vecina(c.estado, -1); as previa) {
+                    @if (c.estado !== 'Fabricacion' && c.estado !== 'Finalizado') {
+                      <button class="btn icono chico" type="button" (click)="mover(c, previa)" title="Etapa anterior">◀</button>
+                    }
+                  }
+                  @if (vecina(c.estado, 1); as siguiente) {
+                    <button class="btn icono chico" type="button" (click)="mover(c, siguiente)" title="Etapa siguiente">▶</button>
+                  }
+                </div>
+              </article>
+            } @empty {
+              <div class="vacia">Sin comandas</div>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  </div>
+</div>
+
+<app-modal [abierto]="!!seleccionada()" [titulo]="'Comanda ' + (seleccionada()?.id_comanda ?? '')" [ancho]="620"
+           (cerrar)="seleccionada.set(null)">
+  @if (seleccionada(); as c) {
+    <dl class="datos">
+      <dt>Etapa</dt><dd><app-estado [valor]="c.estado" /></dd>
+      <dt>Nota de venta</dt><dd><a [routerLink]="['/notas-venta', c.id_nota_venta]">N° {{ c.folio }}</a></dd>
+      <dt>Producto</dt><dd>{{ c.producto }} × {{ c.cantidad }}</dd>
+      @if (c.diseno_personalizado) { <dt>Diseño</dt><dd class="muted">{{ c.diseno_personalizado }}</dd> }
+      <dt>Despacho</dt><dd>{{ c.fecha_despacho ? (c.fecha_despacho | date:'dd-MM-yyyy') : '—' }}</dd>
+      <dt>Inicio fabricación</dt><dd>{{ c.fecha_inicio ? (c.fecha_inicio | date:'dd-MM-yyyy HH:mm') : '—' }}</dd>
+      <dt>Término</dt><dd>{{ c.fecha_termino ? (c.fecha_termino | date:'dd-MM-yyyy HH:mm') : '—' }}</dd>
+    </dl>
+
+    <div class="row mt">
+      <select class="input" style="flex: 1" [(ngModel)]="asignado" name="asignado">
+        <option [ngValue]="null">Sin asignar</option>
+        @for (t of trabajadores(); track t.id_usuario) { <option [ngValue]="t.id_usuario">{{ t.nombre }}</option> }
+      </select>
+      <button class="btn" type="button" (click)="asignar()">Asignar trabajador</button>
+    </div>
+
+    @if (c.estado === 'EnEspera') {
+      <h3 class="mt" style="font-size: 14px">Reutilización de sobrantes</h3>
+      <p class="muted small">Reserve retazos compatibles antes de pasar a Fabricación: cada retazo reemplaza 1 unidad de madera nueva.</p>
+      @for (r of reservadas(); track r.id_merma) {
+        <div class="row retazo">
+          <app-estado valor="Reservado" />
+          <span>#{{ r.id_merma }} {{ r.material }} · {{ r.largo_cm | number:'1.0-1' }}×{{ r.ancho_cm | number:'1.0-1' }}×{{ r.espesor_cm | number:'1.0-1' }} cm</span>
+          <span class="spacer"></span>
+          <button class="btn chico" type="button" (click)="retazo(r, 'liberar')">Liberar</button>
+        </div>
+      }
+      @for (r of sugeridas(); track r.id_merma) {
+        <div class="row retazo">
+          <app-estado valor="Disponible" />
+          <span>#{{ r.id_merma }} {{ r.material }} · {{ r.largo_cm | number:'1.0-1' }}×{{ r.ancho_cm | number:'1.0-1' }}×{{ r.espesor_cm | number:'1.0-1' }} cm · {{ r.bodega }}</span>
+          <span class="spacer"></span>
+          <button class="btn chico primario" type="button" (click)="retazo(r, 'reservar')">Reservar</button>
+        </div>
+      }
+      @if (!sugeridas().length && !reservadas().length) {
+        <div class="aviso info">No hay retazos compatibles disponibles para esta comanda.</div>
+      }
+    }
+  }
+</app-modal>

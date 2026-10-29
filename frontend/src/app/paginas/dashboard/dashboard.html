@@ -1,0 +1,100 @@
+@if (d(); as d) {
+  <div class="stack">
+    <div class="grid grid-4">
+      <div class="card kpi">
+        <div class="etiqueta">Notas de venta pendientes</div>
+        <div class="valor">{{ d.kpis['notas_pendientes'] }}</div>
+        <div class="pie">{{ d.kpis['notas_sin_stock'] }} rechazadas por falta de stock</div>
+      </div>
+      <div class="card kpi">
+        <div class="etiqueta">Comandas en fabricación</div>
+        <div class="valor">{{ d.kpis['comandas_fabricacion'] }}</div>
+        <div class="pie">{{ d.kpis['comandas_en_espera'] }} en espera de inicio</div>
+      </div>
+      <div class="card kpi">
+        <div class="etiqueta">Alertas de stock activas</div>
+        <div class="valor" [style.color]="d.kpis['alertas_activas'] ? 'var(--rojo)' : ''">{{ d.kpis['alertas_activas'] }}</div>
+        <div class="pie" [class.malo]="d.kpis['alertas_activas']">
+          {{ d.kpis['alertas_activas'] ? 'Requieren compra urgente' : 'Sin faltantes' }}
+        </div>
+      </div>
+      <div class="card kpi">
+        <div class="etiqueta">Mermas reutilizables</div>
+        <div class="valor">{{ d.kpis['mermas_reutilizables'] }}</div>
+        <div class="pie">Piezas disponibles en bodega</div>
+      </div>
+    </div>
+
+    <div class="grid grid-60-40">
+      <div class="card">
+        <div class="card-header">
+          <h2>Notas de venta recientes</h2>
+          <a class="btn chico" routerLink="/notas-venta">Ver todas</a>
+        </div>
+        <div class="tabla-wrap">
+          <table class="tabla">
+            <thead><tr><th>Folio</th><th>Cliente</th><th>Producto</th><th>Estado</th><th class="num">Total</th></tr></thead>
+            <tbody>
+              @for (n of d.notas_recientes; track n.id_nota_venta) {
+                <tr class="clic" (click)="router.navigate(['/notas-venta', n.id_nota_venta])">
+                  <td class="nowrap">N° {{ n.folio }}</td>
+                  <td>{{ n.cliente }}</td>
+                  <td>{{ n.productos }}</td>
+                  <td><app-estado [valor]="n.estado" /></td>
+                  <td class="num">{{ n.monto_total | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="5" class="vacio">Aún no hay notas de venta</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Alertas de stock</h2>
+          <a class="btn chico" routerLink="/alertas">Gestionar</a>
+        </div>
+        <div class="card-body stack" style="gap: 12px">
+          @for (a of d.alertas; track a.id_alerta) {
+            <div class="row" style="flex-wrap: nowrap">
+              <div style="width: 42%">
+                <div>{{ a.material }}</div>
+                <div class="muted small">{{ a.tipo | nombre }}{{ a.folio ? ' · Nota ' + a.folio : '' }}</div>
+              </div>
+              <div class="barra" [class.bad]="porcentaje(a) < 50" [class.warn]="porcentaje(a) >= 50">
+                <span [style.width.%]="porcentaje(a)"></span>
+              </div>
+              <strong class="nowrap small">{{ a.stock_disponible | number:'1.0-2' }}/{{ a.stock_requerido | number:'1.0-2' }} {{ a.unidad_medida }}</strong>
+            </div>
+          } @empty {
+            <div class="aviso ok">No hay alertas pendientes</div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Comandas por etapa</h2>
+        <a class="btn chico" routerLink="/comandas">Ver tablero</a>
+      </div>
+      <div class="card-body row" style="gap: 36px">
+        @for (e of etapas; track e.clave) {
+          <div>
+            <div style="font-family: var(--serif); font-size: 24px">{{ d.kpis[e.clave] }}</div>
+            <div class="muted">{{ e.nombre }}</div>
+          </div>
+        }
+        <span class="spacer"></span>
+        <div class="right">
+          <div class="muted small">Valor del inventario</div>
+          <strong style="font-size: 16px">{{ d.kpis['valor_inventario'] | currency:'CLP':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+} @else {
+  <p class="muted">Cargando…</p>
+}

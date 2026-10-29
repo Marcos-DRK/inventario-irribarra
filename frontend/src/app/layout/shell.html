@@ -1,0 +1,50 @@
+<div class="app" [class.menu-abierto]="menuAbierto()">
+  <aside class="lateral">
+    <div class="marca">
+      <span class="logo">TI</span>
+      <div>
+        <strong>Taller Irribarra</strong>
+        <small>Saunas · Tinas · Wellness</small>
+      </div>
+    </div>
+
+    <nav>
+      @for (grupo of grupos; track grupo.nombre) {
+        <div class="grupo">{{ grupo.nombre }}</div>
+        @for (e of grupo.enlaces; track e.ruta) {
+          @if (!e.soloAdmin || auth.esAdmin()) {
+            <a [routerLink]="e.ruta" routerLinkActive="activo">
+              <span class="icono">{{ e.icono }}</span>{{ e.texto }}
+            </a>
+          }
+        }
+      }
+    </nav>
+
+    <div class="perfil">
+      <span class="avatar">{{ auth.iniciales() }}</span>
+      <div>
+        <strong>{{ auth.usuario()?.nombre }}</strong>
+        <small>{{ auth.esAdmin() ? 'Administrador' : 'Trabajador de taller' }}</small>
+      </div>
+    </div>
+  </aside>
+
+  <div class="velo" (click)="menuAbierto.set(false)"></div>
+
+  <div class="principal">
+    <header class="encabezado">
+      <button class="btn icono hamburguesa" type="button" (click)="menuAbierto.set(true)" aria-label="Abrir menú">☰</button>
+      <div>
+        <h1>{{ titulo() }}</h1>
+        <p>{{ subtitulo() }}</p>
+      </div>
+      <span class="spacer"></span>
+      <button class="btn" type="button" (click)="auth.logout()">Cerrar sesión</button>
+    </header>
+
+    <main class="contenido">
+      <router-outlet />
+    </main>
+  </div>
+</div>

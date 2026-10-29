@@ -1,0 +1,95 @@
+<div class="card">
+  <div class="card-header">
+    <h2>Facturas de compra</h2>
+    <button class="btn primario" type="button" (click)="abrir()">+ Registrar compra</button>
+  </div>
+  <div class="tabla-wrap">
+    <table class="tabla">
+      <thead><tr><th>N° factura</th><th>Proveedor</th><th>Emisión</th><th>Ingreso</th><th class="num">Líneas</th>
+                 <th>Registrada por</th><th class="num">Total</th></tr></thead>
+      <tbody>
+        @for (f of facturas(); track f.id_factura) {
+          <tr class="clic" (click)="ver(f)">
+            <td><strong>{{ f.numero_factura }}</strong></td>
+            <td>{{ f.razon_social }}</td>
+            <td class="nowrap">{{ f.fecha_emision | date:'dd-MM-yyyy' }}</td>
+            <td class="nowrap">{{ f.fecha_ingreso | date:'dd-MM-yyyy HH:mm' }}</td>
+            <td class="num">{{ f.lineas }}</td>
+            <td>{{ f.registrado_por }}</td>
+            <td class="num">{{ f.monto_total | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" class="vacio">Aún no se registran compras</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<app-modal [abierto]="registrando()" titulo="Registrar compra (factura de proveedor)" [ancho]="820" (cerrar)="registrando.set(false)">
+  <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr">
+    <div class="campo"><label>Proveedor</label>
+      <select class="input" [(ngModel)]="form.id_proveedor" name="prov">
+        <option [ngValue]="null" disabled>Seleccione…</option>
+        @for (p of proveedores(); track p.id_proveedor) { <option [ngValue]="p.id_proveedor">{{ p.razon_social }}</option> }
+      </select></div>
+    <div class="campo"><label>N° factura</label><input class="input" [(ngModel)]="form.numero_factura" name="num" /></div>
+    <div class="campo"><label>Fecha emisión</label><input class="input" type="date" [(ngModel)]="form.fecha_emision" name="fe" /></div>
+  </div>
+
+  <div class="tabla-wrap mt">
+    <table class="tabla">
+      <thead><tr><th>Material</th><th class="num">Cantidad</th><th class="num">Costo unitario</th><th class="num">Subtotal</th><th></th></tr></thead>
+      <tbody>
+        @for (l of lineas; track $index; let i = $index) {
+          <tr>
+            <td style="min-width: 260px">
+              <select class="input" [(ngModel)]="l.id_material" (ngModelChange)="elegirMaterial(l)" [name]="'m' + i">
+                <option [ngValue]="null" disabled>Seleccione material…</option>
+                @for (m of materiales(); track m.id_material) {
+                  <option [ngValue]="m.id_material">{{ m.nombre }} ({{ m.codigo_interno }})</option>
+                }
+              </select>
+            </td>
+            <td class="num"><div class="row" style="flex-wrap: nowrap">
+              <input class="input" style="width: 90px" type="number" min="0" step="any" [(ngModel)]="l.cantidad" [name]="'c' + i" />
+              <span class="muted small">{{ unidad(l.id_material) }}</span></div></td>
+            <td class="num"><input class="input" style="width: 120px" type="number" min="0" [(ngModel)]="l.costo_unitario" [name]="'p' + i" /></td>
+            <td class="num">{{ (l.cantidad || 0) * (l.costo_unitario || 0) | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+            <td><button class="btn icono chico" type="button" (click)="quitarLinea(i)" aria-label="Quitar línea">✕</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="row mt">
+    <button class="btn chico" type="button" (click)="agregarLinea()">+ Agregar línea</button>
+    <span class="spacer"></span>
+    <strong>Total: {{ total() | currency:'CLP':'symbol-narrow':'1.0-0' }}</strong>
+  </div>
+  <p class="small muted">Al guardar, el trigger <span class="mono">trg_ingreso_por_factura</span> suma las cantidades al stock,
+    registra el kardex y resuelve las alertas que queden cubiertas.</p>
+  <div class="row end">
+    <button class="btn" type="button" (click)="registrando.set(false)">Cancelar</button>
+    <button class="btn primario" type="button" (click)="guardar()" [disabled]="!valido() || guardando()">
+      {{ guardando() ? 'Guardando…' : 'Registrar factura' }}</button>
+  </div>
+</app-modal>
+
+<app-modal [abierto]="!!viendo()" [titulo]="'Factura ' + (viendo()?.numero_factura ?? '')" [ancho]="720" (cerrar)="viendo.set(null)">
+  @if (viendo(); as f) {
+    <p style="margin-top: 0">{{ f.razon_social }} · {{ f.rut_proveedor }} · emitida {{ f.fecha_emision | date:'dd-MM-yyyy' }}</p>
+    <table class="tabla">
+      <thead><tr><th>Código</th><th>Material</th><th class="num">Cantidad</th><th class="num">Costo unit.</th><th class="num">Subtotal</th></tr></thead>
+      <tbody>
+        @for (d of f.detalles; track d.id_detalle_factura) {
+          <tr><td class="mono">{{ d.codigo_interno }}</td><td>{{ d.material }}</td>
+              <td class="num">{{ d.cantidad | number:'1.0-2' }} {{ d.unidad_medida }}</td>
+              <td class="num">{{ d.costo_unitario | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+              <td class="num">{{ d.subtotal | currency:'CLP':'symbol-narrow':'1.0-0' }}</td></tr>
+        }
+      </tbody>
+    </table>
+    <p class="right"><strong>Total {{ f.monto_total | currency:'CLP':'symbol-narrow':'1.0-0' }}</strong></p>
+  }
+</app-modal>
