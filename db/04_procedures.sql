@@ -7,8 +7,10 @@ DELIMITER $$
 
 -- ---------------------------------------------------------------------
 -- Evalúa una nota de venta (sin abrir transacción: la abre quien llama).
--- Re-verifica las alertas pendientes de la nota; si todas quedaron
--- cubiertas la aprueba y crea una comanda por cada línea de detalle.
+-- Vuelve a calcular la receta contra el stock disponible de HOY (stock
+-- menos lo comprometido por otras comandas en espera): resuelve las
+-- alertas cubiertas y crea alertas nuevas para lo que ya no alcanza.
+-- Sin faltantes la aprueba y crea una comanda por cada línea de detalle.
 -- ---------------------------------------------------------------------
 DROP PROCEDURE IF EXISTS sp_evaluar_nota $$
 CREATE PROCEDURE sp_evaluar_nota(IN p_id_nota INT, OUT p_estado VARCHAR(20))
@@ -24,14 +26,38 @@ BEGIN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La nota de venta ya fue aprobada';
   END IF;
 
-  -- Alertas que hoy ya están cubiertas (p. ej. tras un ajuste de stock)
+  -- No basta con mirar las alertas: otra nota pudo comprometer el mismo
+  -- stock después de que una compra las marcara como resueltas.
+  DROP TEMPORARY TABLE IF EXISTS tmp_necesidad;
+  CREATE TEMPORARY TABLE tmp_necesidad AS
+  SELECT x.id_material, x.requerido,
+         m.stock_actual - COALESCE(sc.comprometido, 0) AS disponible
+    FROM (SELECT r.id_material, SUM(r.cantidad_requerida * d.cantidad) AS requerido
+            FROM detalle_nota_venta d
+            JOIN receta_producto r ON r.id_producto = d.id_producto
+           WHERE d.id_nota_venta = p_id_nota
+           GROUP BY r.id_material) x
+    JOIN material m ON m.id_material = x.id_material
+    LEFT JOIN v_stock_comprometido sc ON sc.id_material = x.id_material;
+
+  -- Alertas que hoy ya están cubiertas (compra, ajuste de stock)
   UPDATE alerta_stock a
-    JOIN material m ON m.id_material = a.id_material
-    LEFT JOIN v_stock_comprometido sc ON sc.id_material = a.id_material
+    JOIN tmp_necesidad t ON t.id_material = a.id_material
      SET a.estado = 'Resuelta', a.fecha_resolucion = NOW()
    WHERE a.id_nota_venta = p_id_nota
      AND a.estado = 'Pendiente'
-     AND a.stock_requerido <= m.stock_actual - COALESCE(sc.comprometido, 0);
+     AND t.disponible >= t.requerido;
+
+  -- Faltantes actuales sin alerta pendiente (vuelven a aparecer)
+  INSERT INTO alerta_stock (id_material, id_nota_venta, tipo, stock_disponible, stock_requerido)
+  SELECT t.id_material, p_id_nota, 'Faltante', t.disponible, t.requerido
+    FROM tmp_necesidad t
+   WHERE t.disponible < t.requerido
+     AND NOT EXISTS (SELECT 1 FROM alerta_stock a
+                      WHERE a.id_nota_venta = p_id_nota AND a.id_material = t.id_material
+                        AND a.estado = 'Pendiente');
+
+  DROP TEMPORARY TABLE tmp_necesidad;
 
   SELECT COUNT(*) INTO v_pendientes
     FROM alerta_stock WHERE id_nota_venta = p_id_nota AND estado = 'Pendiente';
